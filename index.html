@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bank Complaints Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --brand:#FFCC00; --brand-deep:#E0A800; --ink:#141414; --ink-2:#3d3d3d; --muted:#5c5c5c;
+  --bg:#F5F4EF; --card:#FFFFFF; --line:#E4E1D6; --dim:#E3DFD2; --focus:#0B57D0;
+  --radius:12px; --shadow:0 1px 2px rgba(20,20,20,.06),0 4px 14px rgba(20,20,20,.05);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 "Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:4px}
+.wrap{max-width:1440px;margin:0 auto;padding:0 24px}
+
+/* Header */
+header{background:var(--card);border-bottom:4px solid var(--brand)}
+header .wrap{display:flex;align-items:center;gap:16px;min-height:76px;padding-top:10px;padding-bottom:10px}
+.logo{width:44px;height:44px;object-fit:contain;flex:none}
+.titles{flex:1;min-width:0}
+h1{margin:0;font-size:1.45rem;letter-spacing:.06em;text-transform:uppercase;font-weight:800}
+.subtitle{margin:0;color:var(--muted);font-size:.86rem}
+.btn{font:inherit;font-size:.88rem;font-weight:600;border:1.5px solid var(--ink);background:var(--card);color:var(--ink);border-radius:999px;padding:7px 16px;cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--brand)}
+.btn[disabled]{opacity:.45;cursor:default;background:var(--card)}
+
+/* Filters */
+.filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 18px;padding:18px 0 6px}
+.filters .lbl-main{font-weight:700;font-size:.95rem;align-self:center;margin-right:2px}
+.field{display:flex;flex-direction:column;gap:3px;min-width:180px;flex:0 1 230px}
+.field label{font-size:.74rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+select{font:inherit;font-size:.9rem;color:var(--ink);background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23141414' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center;appearance:none;-webkit-appearance:none;border:1.5px solid #8a877d;border-radius:8px;padding:8px 34px 8px 12px;width:100%}
+select:hover{border-color:var(--ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;min-height:30px;padding:6px 0 4px;align-items:center}
+.chips .hint{color:var(--muted);font-size:.82rem}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--brand);color:var(--ink);border:none;border-radius:999px;padding:4px 10px 4px 12px;font:inherit;font-size:.82rem;font-weight:600;cursor:pointer}
+.chip span{font-weight:400}
+.chip:hover{background:var(--brand-deep)}
+.chip svg{width:10px;height:10px}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:14px;margin:6px 0 16px;padding:0;list-style:none}
+.kpi{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px 13px;border-top:4px solid var(--brand);min-height:118px;display:flex;flex-direction:column}
+.kpi .k-label{font-size:.76rem;font-weight:700;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em}
+.kpi .k-value{font-size:1.9rem;font-weight:800;line-height:1.15;margin:6px 0 4px;font-variant-numeric:tabular-nums}
+.kpi .k-value.text{font-size:1.02rem;line-height:1.25;font-weight:700}
+.kpi .k-sub{font-size:.8rem;color:var(--muted);margin-top:auto}
+.kpi .k-sub b{color:var(--ink-2);font-weight:600}
+
+/* Panels */
+.grid{display:grid;grid-template-columns:minmax(220px,.95fr) 1.55fr 1.5fr;grid-template-rows:auto auto;gap:14px;padding-bottom:16px}
+.panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px 16px;min-width:0;display:flex;flex-direction:column}
+.panel h2{margin:0;font-size:1rem;font-weight:700}
+.panel .p-sub{margin:2px 0 10px;color:var(--muted);font-size:.8rem}
+.p-req{grid-row:1 / span 2;grid-column:1}
+.p-trend{grid-column:2;grid-row:1}
+.p-map{grid-column:3;grid-row:1}
+.p-annual{grid-column:2 / span 2;grid-row:2}
+.chart-box{position:relative;flex:1;min-height:250px}
+.p-annual .chart-box{min-height:240px}
+canvas{display:block}
+canvas:focus-visible{outline-offset:4px}
+
+/* Request type bars */
+.req-list{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:8px;flex:1}
+.req-btn{width:100%;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 14px;gap:3px 10px;align-items:center;text-align:left;font:inherit;color:var(--ink);background:transparent;border:1.5px solid transparent;border-radius:8px;padding:6px 8px;cursor:pointer}
+.req-btn:hover{background:#FBF8EC;border-color:var(--line)}
+.req-btn .r-name{font-size:.9rem;font-weight:600}
+.req-btn .r-val{font-size:.85rem;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.req-btn .r-val small{color:var(--muted);font-size:.76rem;margin-left:4px}
+.req-btn .r-track{grid-column:1 / span 2;height:14px;background:#F1EEE4;border-radius:3px;overflow:hidden}
+.req-btn .r-bar{height:100%;background:var(--brand);border:1px solid var(--ink);border-radius:3px;min-width:2px;transition:width .3s ease}
+.req-btn[aria-pressed="true"]{border-color:var(--ink);background:#FFF7D6}
+.has-sel .req-btn[aria-pressed="false"] .r-bar{background:var(--dim);border-color:#9c988b}
+
+/* Map */
+.map-wrap{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;min-height:250px}
+#map{width:100%;max-height:330px;flex:1}
+#map .st{stroke:#fff;stroke-width:1.2;cursor:pointer;transition:fill .25s ease}
+#map .st:hover{stroke:var(--ink);stroke-width:1.6}
+#map .st.sel{stroke:var(--ink);stroke-width:2.6}
+#map g:focus{outline:none}
+#map g:focus-visible .st{stroke:var(--focus);stroke-width:3}
+#map text{font-size:13px;font-weight:700;fill:var(--ink);paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round;pointer-events:none;text-anchor:middle}
+#map text .n{font-weight:500;font-size:12px}
+#map .lead{stroke:var(--ink-2);stroke-width:1;fill:none}
+.legend{display:flex;align-items:center;gap:8px;font-size:.75rem;color:var(--muted);margin-top:4px}
+.legend .ramp{width:140px;height:10px;border-radius:2px;border:1px solid #b9b5a8}
+.map-tip{position:absolute;pointer-events:none;background:var(--ink);color:#fff;font-size:.8rem;padding:6px 9px;border-radius:6px;opacity:0;transition:opacity .12s;white-space:nowrap;z-index:5}
+
+/* Notes */
+details.notes{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:12px 16px;margin-bottom:28px;font-size:.88rem}
+details.notes summary{cursor:pointer;font-weight:700}
+details.notes h3{font-size:.9rem;margin:14px 0 4px}
+details.notes ul{margin:4px 0;padding-left:20px}
+details.notes li{margin:3px 0}
+.empty{color:var(--muted);font-size:.85rem;padding:8px}
+
+@media (max-width:1180px){
+  .kpis{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .grid{grid-template-columns:1fr 1fr}
+  .p-req{grid-column:1;grid-row:1}
+  .p-trend{grid-column:2;grid-row:1}
+  .p-map{grid-column:1;grid-row:2}
+  .p-annual{grid-column:2;grid-row:2}
+}
+@media (max-width:720px){
+  .wrap{padding:0 16px}
+  h1{font-size:1.1rem}
+  header .wrap{flex-wrap:wrap}
+  .titles{flex:1 1 calc(100% - 64px)}
+  #resetAll{margin-left:60px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .kpi{min-height:104px;padding:12px}
+  .kpi .k-value{font-size:1.5rem}
+  .grid{grid-template-columns:1fr}
+  .p-req,.p-trend,.p-map,.p-annual{grid-column:1;grid-row:auto}
+  .field{flex:1 1 100%}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    
+    <div class="titles">
+      <h1>Complaints Dashboard</h1>
+      <p class="subtitle" id="subtitle"></p>
+    </div>
+    <button class="btn" id="resetAll" type="button" disabled>Reset all filters</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="filters" aria-label="Filters">
+    <span class="lbl-main" aria-hidden="true">Filters</span>
+    <div class="field"><label for="fYear">Year</label><select id="fYear" data-key="year"></select></div>
+    <div class="field"><label for="fProduct">Product</label><select id="fProduct" data-key="product"></select></div>
+    <div class="field"><label for="fIssue">Issue</label><select id="fIssue" data-key="issue"></select></div>
+  </section>
+  <div class="chips" id="chips" aria-label="Active filters"></div>
+  <p class="sr-only" id="live" aria-live="polite"></p>
+
+  <ul class="kpis" id="kpis" aria-label="Key performance indicators"></ul>
+
+  <div class="grid">
+    <section class="panel p-req" aria-labelledby="hReq">
+      <h2 id="hReq">Request type</h2>
+      <p class="p-sub">Channel the complaint arrived through. Select a bar to filter.</p>
+      <ul class="req-list" id="reqList"></ul>
+    </section>
+
+    <section class="panel p-trend" aria-labelledby="hTrend">
+      <h2 id="hTrend">Complaint trend</h2>
+      <p class="p-sub">Complaints per quarter. Click a point (or focus and use ← → Enter) to filter to that quarter.</p>
+      <div class="chart-box"><canvas id="trend" tabindex="0" role="img"></canvas></div>
+    </section>
+
+    <section class="panel p-map" aria-labelledby="hMap">
+      <h2 id="hMap">State-wise complaints</h2>
+      <p class="p-sub">Darker = more complaints. Select a state to filter.</p>
+      <div class="map-wrap">
+        <svg id="map" viewBox="0 0 445 412" role="group" aria-label="Map of Australia, complaints by state"></svg>
+        <div class="legend" aria-hidden="true"><span id="lgMin">0</span><span class="ramp" id="lgRamp"></span><span id="lgMax"></span></div>
+        <div class="map-tip" id="mapTip" role="presentation"></div>
+      </div>
+    </section>
+
+    <section class="panel p-annual" aria-labelledby="hAnnual">
+      <h2 id="hAnnual">Annual breakdown</h2>
+      <p class="p-sub">Complaints received per year. Click a bar (or focus and use ← → Enter) to filter to that year.</p>
+      <div class="chart-box"><canvas id="annual" tabindex="0" role="img"></canvas></div>
+    </section>
+  </div>
+
+  <details class="notes">
+    <summary>About this dashboard: KPI definitions and assumptions</summary>
+    <h3>KPIs</h3>
+    <ul>
+      <li><b>Total complaints</b>: count of complaint records matching all active filters.</li>
+      <li><b>Timely response rate</b>: share of complaints where <i>Timely response</i> = Yes.</li>
+      <li><b>Disputed rate</b>: share of complaints where <i>Consumer disputed</i> = Yes.</li>
+      <li><b>Resolved with relief</b>: complaints closed with monetary or non-monetary relief, as a share of <i>closed</i> complaints (in-progress cases excluded from the denominator).</li>
+      <li><b>Open cases</b>: complaints with <i>Status</i> = In progress.</li>
+      <li><b>Top issue</b>: the most frequent <i>Issue</i> in the current selection.</li>
+      <li>When filters are active, each KPI also shows the all-data figure for comparison.</li>
+    </ul>
+    <h3>Assumptions</h3>
+    <ul>
+      <li>Time is based on <i>Date received</i>. Quarters are calendar quarters. 2011 contains only two records (data starts Aug 2011), so its low count reflects coverage, not performance.</li>
+      <li><i>Status</i> and <i>Company response</i> match one-to-one in this data (every "In progress" response has Status "In progress"), so open cases use Status.</li>
+      <li>Panels cross-filter: each chart applies every filter except its own dimension, so you can still see and switch between alternatives. The trend and annual charts both ignore the time filters and instead highlight the selected period. Picking a year clears a picked quarter and vice-versa.</li>
+      <li>The map uses simplified state outlines drawn for this dashboard (no external map data). ACT is shown as a marker because it is too small to click at this scale.</li>
+      <li><i>Postcode</i>, <i>Sub-product</i> and <i>Complaint ID</i> are not visualised. All figures come straight from the 467 rows in the source sheet; nothing is estimated.</li>
+    </ul>
+  </details>
+</main>
+
+<script>
+const RAW = {"dims":{"Product":["Bank services","Checking / savings","Credit card","Mortgage","Other"],"Sub-product":["ATM access","Car loan","Debit card","Direct debit","Everyday transaction account","Fixed rate home loan","Foreign currency","Insurance","International transfer","Investment home loan","Line of credit","Low rate credit card","Online banking","Overdraft","Owner-occupier home loan","Personal loan","Platinum credit card","Rewards credit card","Savings account","Store credit card","Superannuation","Term deposit","Youth account"],"Issue":["Account closed without notice","Delayed processing","Difficulty contacting the bank","Dispute not resolved","Fraud or unauthorised transaction","Incorrect fees or charges","Interest rate not as advertised","Poor customer service","Problem with a transaction","Statement error"],"Request type":["Email","Fax","Phone","Postal mail","Referral","Web"],"State":["ACT","NSW","NT","QLD","SA","TAS","VIC","WA"],"Company response":["Closed with explanation","Closed with monetary relief","Closed with non-monetary relief","Closed without relief","In progress"]},"rows":[["2011-08-26",3,14,7,4,4,0,1,0],["2011-12-07",1,21,8,2,3,0,1,0],["2012-02-11",2,16,7,1,1,0,0,0],["2012-02-16",4,1,1,4,6,2,1,0],["2012-02-17",4,7,7,2,7,0,1,0],["2012-02-26",4,15,4,5,1,3,0,0],["2012-02-29",4,6,6,4,3,0,1,0],["2012-03-04",0,8,0,4,7,3,1,1],["2012-03-07",1,21,8,4,3,0,1,1],["2012-03-08",4,6,2,4,6,0,1,0],["2012-03-13",4,13,2,4,3,1,1,0],["2012-03-23",4,6,0,5,6,0,1,0],["2012-03-28",0,2,3,2,2,0,1,1],["2012-05-05",3,10,5,3,1,0,1,0],["2012-05-10",2,19,5,4,6,0,1,0],["2012-05-12",4,1,8,5,7,4,1,0],["2012-05-14",2,16,8,4,1,3,1,0],["2012-05-16",4,20,5,4,5,0,1,0],["2012-05-19",4,1,6,5,7,0,1,0],["2012-05-21",1,18,4,2,1,0,1,0],["2012-05-22",2,11,6,5,4,3,1,0],["2012-05-31",4,1,2,5,3,0,0,0],["2012-06-06",2,16,1,4,1,0,1,0],["2012-06-16",3,10,8,4,1,1,1,0],["2012-07-05",0,12,0,4,1,3,1,0],["2012-07-09",1,22,3,4,1,0,1,0],["2012-07-31",2,11,8,5,3,0,1,0],["2012-08-30",2,16,2,5,3,0,1,0],["2012-09-08",2,16,5,5,3,0,0,1],["2012-09-18",2,16,9,5,1,0,1,0],["2012-09-25",3,10,0,5,3,0,1,0],["2012-10-01",2,11,3,5,6,2,1,0],["2012-10-11",1,18,8,4,6,3,1,1],["2012-10-23",2,16,3,5,1,1,1,0],["2012-10-27",0,3,8,4,1,4,1,0],["2012-10-29",2,19,0,4,3,0,0,0],["2012-10-31",0,2,7,5,6,0,1,1],["2012-11-08",4,7,8,4,1,0,1,0],["2012-11-10",2,11,0,4,1,0,1,0],["2012-11-24",4,15,0,5,7,0,1,0],["2012-12-05",4,7,2,4,1,0,1,0],["2012-12-07",0,12,5,4,6,2,1,0],["2012-12-12",1,21,3,3,6,0,1,0],["2012-12-14",3,9,1,5,3,0,1,0],["2012-12-27",4,13,0,2,6,4,1,0],["2013-01-22",2,17,6,5,0,0,1,0],["2013-01-22",1,4,3,5,1,3,1,1],["2013-02-03",4,13,3,5,4,0,1,0],["2013-02-13",1,21,9,4,6,1,1,0],["2013-02-16",2,16,6,3,1,0,1,0],["2013-02-24",1,18,6,2,7,0,1,0],["2013-03-05",1,22,6,1,4,0,1,0],["2013-03-12",1,18,6,5,5,1,1,0],["2013-03-13",4,15,8,5,2,3,1,0],["2013-03-15",3,5,1,3,7,0,1,1],["2013-04-09",3,9,2,4,1,2,1,0],["2013-04-15",3,10,7,5,1,0,1,0],["2013-05-07",2,11,5,3,6,1,1,0],["2013-05-08",0,3,6,3,3,0,1,1],["2013-05-12",4,13,1,4,1,3,0,0],["2013-05-14",4,15,3,5,1,1,1,1],["2013-05-17",4,20,5,4,1,1,0,0],["2013-05-19",1,22,0,5,3,3,1,1],["2013-05-25",2,19,5,4,1,3,1,0],["2013-05-29",1,22,9,2,6,1,1,0],["2013-06-09",4,20,8,4,1,2,1,0],["2013-06-16",3,10,3,4,6,1,1,0],["2013-07-13",1,22,7,4,1,3,1,0],["2013-08-10",0,8,9,4,6,4,1,1],["2013-08-17",1,18,2,4,3,0,1,0],["2013-08-20",4,20,1,5,6,0,1,0],["2013-08-21",1,18,5,5,7,0,0,0],["2013-09-16",2,17,1,4,6,0,1,0],["2013-09-23",2,17,3,5,2,4,1,0],["2013-09-25",4,7,8,5,1,0,1,0],["2013-10-13",4,6,1,5,1,0,1,0],["2013-10-13",4,6,1,5,1,0,1,1],["2013-10-16",3,5,0,5,1,0,0,0],["2013-10-23",1,21,5,5,3,0,0,0],["2013-11-16",4,20,3,2,6,0,1,0],["2013-11-17",1,4,2,5,6,2,1,0],["2013-11-24",2,19,7,4,3,0,1,0],["2013-11-26",3,9,4,4,3,0,1,0],["2013-12-12",4,6,5,2,1,3,1,0],["2013-12-16",0,12,7,5,6,0,1,0],["2013-12-18",1,21,1,2,6,3,1,0],["2013-12-25",0,3,7,5,3,0,1,0],["2013-12-28",4,1,7,5,5,3,1,0],["2014-01-13",2,17,5,3,1,0,1,0],["2014-01-15",3,14,0,4,7,1,1,0],["2014-01-29",1,22,0,5,6,0,1,0],["2014-02-09",0,8,0,5,1,2,1,0],["2014-02-16",0,0,7,3,3,2,0,0],["2014-02-17",2,19,5,3,1,4,1,1],["2014-03-03",4,7,3,5,7,0,1,0],["2014-03-11",2,16,6,5,0,2,1,0],["2014-03-20",2,19,8,4,4,2,1,0],["2014-04-06",3,5,1,5,7,3,1,0],["2014-04-10",2,11,2,5,6,0,1,0],["2014-04-12",2,19,8,4,6,0,1,0],["2014-04-14",4,6,8,5,1,0,1,0],["2014-04-17",2,17,1,5,3,4,1,0],["2014-04-20",4,6,1,2,6,0,1,0],["2014-04-21",4,13,7,4,7,0,1,0],["2014-04-24",2,17,0,5,1,0,1,1],["2014-04-30",4,7,1,4,1,0,1,0],["2014-05-22",3,5,6,5,1,0,1,0],["2014-06-04",1,21,0,5,3,0,1,0],["2014-06-05",0,2,2,5,6,0,0,0],["2014-06-10",0,3,2,4,6,0,1,0],["2014-06-12",2,17,2,5,6,2,1,0],["2014-06-16",3,9,7,5,3,3,0,0],["2014-06-24",2,16,2,5,6,1,1,0],["2014-07-05",0,12,8,5,1,1,1,0],["2014-07-17",0,12,5,5,1,2,1,0],["2014-07-19",1,21,9,5,3,0,1,1],["2014-07-27",1,21,8,5,4,2,1,0],["2014-07-31",1,22,3,5,1,0,1,0],["2014-08-03",2,17,4,4,1,2,1,0],["2014-08-15",3,10,9,5,3,0,1,0],["2014-08-18",1,4,7,4,7,3,1,0],["2014-08-21",2,19,0,5,7,0,1,1],["2014-08-26",0,8,7,5,1,0,1,0],["2014-08-30",4,13,7,5,6,2,1,0],["2014-09-03",3,10,7,4,6,0,1,0],["2014-09-15",0,2,8,5,3,1,1,0],["2014-09-16",2,17,2,5,7,1,1,0],["2014-09-20",1,21,6,4,1,3,1,0],["2014-09-24",4,13,4,2,6,2,1,1],["2014-10-01",2,17,8,5,6,0,1,0],["2014-10-10",3,5,2,2,1,1,1,0],["2014-10-27",2,11,8,5,6,4,1,0],["2014-11-09",4,7,8,5,6,0,1,1],["2014-11-19",3,14,8,5,6,0,1,0],["2014-12-06",2,19,2,5,6,0,1,1],["2014-12-11",2,17,6,2,6,1,0,0],["2014-12-17",2,17,3,5,6,0,1,0],["2014-12-20",0,8,4,5,3,0,1,0],["2014-12-22",2,11,6,4,1,1,1,0],["2014-12-22",4,15,6,5,1,4,1,0],["2015-01-15",3,5,3,5,3,3,1,0],["2015-01-26",0,2,3,5,6,2,1,0],["2015-01-26",0,3,5,2,1,0,1,0],["2015-01-30",3,10,8,5,6,3,1,0],["2015-02-09",1,4,5,4,1,0,1,0],["2015-02-12",1,4,2,2,3,1,1,0],["2015-02-19",2,17,6,4,7,2,1,1],["2015-02-23",0,12,9,4,1,3,1,0],["2015-03-14",1,21,3,4,4,0,1,0],["2015-03-22",0,8,6,5,0,0,1,0],["2015-04-14",4,15,5,4,3,4,1,1],["2015-04-25",1,22,6,4,1,3,0,0],["2015-05-20",0,2,5,5,3,0,1,1],["2015-05-23",2,17,8,5,6,0,1,1],["2015-05-24",0,2,8,4,6,2,1,0],["2015-06-02",2,17,6,1,7,0,1,0],["2015-06-16",1,4,1,5,1,4,1,1],["2015-06-20",0,8,2,3,7,0,1,0],["2015-06-24",0,3,3,5,7,0,1,0],["2015-06-25",4,1,5,4,6,0,1,0],["2015-06-26",1,21,4,2,1,1,1,0],["2015-06-28",4,1,7,5,6,4,1,0],["2015-07-07",2,17,2,5,6,4,1,0],["2015-07-13",1,18,6,5,1,0,1,1],["2015-07-27",2,17,7,5,1,0,1,1],["2015-08-07",1,4,9,2,6,0,1,0],["2015-08-17",4,20,4,3,6,3,1,0],["2015-08-21",2,19,6,2,1,0,1,0],["2015-08-27",4,7,1,2,6,0,1,0],["2015-09-20",3,14,5,5,4,0,1,1],["2015-09-30",3,9,7,4,6,3,1,0],["2015-09-30",4,13,4,4,3,0,1,0],["2015-10-17",4,6,0,1,1,4,1,1],["2015-10-18",2,16,4,4,5,4,1,1],["2015-10-26",2,19,8,5,1,0,0,0],["2015-11-29",3,5,1,5,1,0,1,0],["2015-12-06",3,9,6,5,4,0,1,0],["2015-12-08",4,15,2,4,3,1,1,0],["2015-12-23",4,7,6,5,6,1,1,0],["2015-12-25",2,19,3,5,1,0,1,0],["2015-12-29",3,5,2,5,6,3,1,0],["2016-01-06",3,14,1,1,6,0,1,0],["2016-01-12",4,13,8,4,0,0,1,0],["2016-02-01",2,19,5,4,6,0,0,0],["2016-02-05",4,7,3,2,2,0,1,1],["2016-02-10",1,4,2,3,6,1,1,0],["2016-02-11",2,17,8,5,6,2,1,0],["2016-03-02",1,22,1,5,7,1,1,0],["2016-03-13",4,6,7,5,1,0,1,0],["2016-03-19",3,9,2,4,1,1,0,0],["2016-03-22",2,16,1,5,6,0,1,1],["2016-03-27",4,20,8,4,7,0,1,0],["2016-03-27",4,15,5,5,3,4,1,1],["2016-03-28",3,9,8,3,5,3,1,0],["2016-04-09",1,4,2,1,7,1,1,0],["2016-04-20",2,17,9,5,3,0,1,0],["2016-05-05",2,11,3,4,6,3,1,0],["2016-05-14",3,14,8,5,3,0,1,1],["2016-06-20",2,11,7,5,4,0,1,0],["2016-06-24",0,0,7,4,1,3,1,0],["2016-06-29",4,1,2,5,4,0,1,0],["2016-07-03",2,17,3,5,1,0,1,1],["2016-07-08",2,16,3,5,4,0,1,0],["2016-07-14",4,6,1,2,7,3,1,1],["2016-07-14",3,9,6,5,3,2,1,0],["2016-07-25",1,18,7,5,6,1,1,1],["2016-07-31",3,5,8,2,1,1,1,1],["2016-08-06",1,22,6,5,6,0,1,0],["2016-08-13",4,13,6,4,3,0,1,0],["2016-08-16",3,10,6,2,3,1,1,1],["2016-09-24",3,10,0,5,3,3,1,0],["2016-09-28",2,11,3,5,1,0,1,0],["2016-10-01",0,3,0,5,6,0,1,0],["2016-10-05",4,13,6,5,6,2,1,0],["2016-10-07",2,19,5,5,3,0,1,0],["2016-10-08",4,13,1,5,1,2,1,0],["2016-10-14",0,12,3,1,7,0,1,0],["2016-10-24",2,17,4,4,4,0,1,0],["2016-10-31",2,19,1,2,3,3,1,0],["2016-11-01",1,22,4,5,6,0,1,1],["2016-11-14",4,6,8,5,7,1,1,0],["2016-11-25",3,5,7,5,1,4,1,1],["2016-11-30",4,6,1,5,7,3,1,0],["2016-12-02",2,19,1,5,3,4,1,0],["2016-12-17",4,15,7,4,3,2,1,0],["2016-12-20",4,1,8,5,6,1,1,0],["2017-01-02",1,4,9,4,1,0,1,0],["2017-01-17",4,6,2,5,6,2,1,0],["2017-01-17",1,22,5,2,6,4,1,0],["2017-01-18",3,14,4,5,3,0,1,1],["2017-01-23",4,20,5,5,3,2,1,0],["2017-01-25",2,11,7,2,3,3,1,0],["2017-01-28",1,4,8,3,5,0,1,0],["2017-02-16",0,0,5,4,6,0,1,0],["2017-02-16",3,9,4,5,4,0,1,1],["2017-02-24",1,22,0,5,7,1,1,0],["2017-02-26",2,17,7,5,1,2,1,0],["2017-03-05",0,3,1,4,1,0,1,0],["2017-03-14",4,15,9,4,4,3,1,0],["2017-03-17",4,20,5,3,3,0,1,0],["2017-04-10",2,17,4,4,3,2,1,0],["2017-04-12",0,8,2,5,6,0,1,0],["2017-04-14",1,18,1,2,6,0,1,0],["2017-04-21",0,8,0,5,6,3,1,0],["2017-04-26",2,19,7,5,5,0,1,1],["2017-04-29",4,6,3,4,1,1,1,0],["2017-05-07",3,5,0,5,7,0,1,1],["2017-05-10",2,19,1,4,7,4,1,0],["2017-05-12",0,8,8,5,4,0,1,0],["2017-05-15",3,10,1,5,1,0,1,0],["2017-05-16",3,14,4,5,7,0,1,0],["2017-05-16",2,16,6,5,1,0,1,1],["2017-05-25",1,21,7,5,6,0,1,1],["2017-06-05",0,12,0,5,3,0,1,0],["2017-06-06",2,19,3,2,6,4,1,0],["2017-06-08",4,15,8,5,3,4,1,1],["2017-06-13",1,18,3,5,7,0,1,0],["2017-07-01",4,7,6,3,3,2,1,1],["2017-07-05",3,14,3,5,4,1,1,1],["2017-07-20",3,14,6,5,6,1,1,1],["2017-07-29",4,15,8,2,0,0,1,1],["2017-08-12",3,5,5,4,1,2,1,0],["2017-08-14",3,14,6,0,1,1,1,0],["2017-08-17",3,9,1,3,6,0,1,0],["2017-09-01",2,17,3,3,6,1,1,0],["2017-09-03",0,0,4,4,1,3,1,0],["2017-09-15",4,6,9,5,1,3,1,0],["2017-09-19",3,5,1,4,1,0,1,0],["2017-09-21",4,7,8,4,4,3,1,0],["2017-09-24",2,16,7,5,7,2,1,0],["2017-10-09",2,11,9,5,1,1,1,0],["2017-10-20",4,7,5,4,1,3,1,0],["2017-11-07",4,13,1,5,6,0,1,1],["2017-11-11",1,4,5,5,1,0,1,0],["2017-11-12",3,9,7,4,1,0,1,0],["2017-11-13",2,11,9,5,7,0,1,0],["2017-11-14",0,8,1,5,1,3,1,0],["2017-11-29",0,3,9,2,3,2,1,1],["2017-12-10",0,2,1,5,3,0,1,0],["2017-12-17",1,22,6,3,7,0,1,0],["2017-12-18",1,21,6,5,1,0,1,0],["2017-12-19",2,11,3,2,7,1,1,0],["2017-12-19",1,21,1,4,6,1,1,0],["2017-12-27",4,13,3,4,3,4,1,0],["2017-12-30",2,16,4,3,1,1,1,0],["2018-01-07",0,2,8,4,0,0,1,1],["2018-01-22",2,16,8,4,3,0,1,0],["2018-01-25",2,17,5,2,3,2,1,0],["2018-01-26",0,0,0,4,6,3,1,0],["2018-02-06",4,7,6,5,4,0,1,0],["2018-02-15",4,6,0,5,6,1,0,0],["2018-02-16",1,4,1,4,1,0,1,0],["2018-02-20",1,22,2,5,1,2,1,0],["2018-02-24",1,4,5,5,1,3,1,0],["2018-02-27",4,15,6,4,6,0,1,0],["2018-02-28",2,19,6,4,6,2,1,0],["2018-03-01",3,10,6,4,4,1,1,1],["2018-03-08",3,10,3,5,1,4,1,0],["2018-03-09",2,19,1,5,6,0,1,1],["2018-03-10",4,1,5,5,6,3,1,0],["2018-03-14",3,9,6,5,4,0,1,0],["2018-03-16",0,2,8,4,4,0,1,1],["2018-03-20",1,18,2,5,7,3,1,1],["2018-03-21",3,5,8,5,6,0,1,0],["2018-03-25",3,14,9,5,1,0,1,0],["2018-03-26",0,0,6,5,1,0,1,0],["2018-03-29",2,11,6,5,4,1,1,0],["2018-03-31",3,9,7,5,7,0,1,0],["2018-04-14",2,11,1,3,1,4,1,0],["2018-04-24",2,17,9,4,6,0,1,0],["2018-05-14",1,22,0,5,4,0,1,1],["2018-05-23",2,17,5,5,1,2,1,0],["2018-06-03",2,19,7,5,6,0,1,0],["2018-06-06",4,20,0,2,3,0,1,0],["2018-06-08",4,6,9,4,3,0,1,0],["2018-06-10",1,22,1,4,1,0,1,0],["2018-06-12",0,2,1,5,6,1,1,0],["2018-06-18",4,1,7,4,3,1,1,0],["2018-06-24",4,7,2,4,7,1,1,1],["2018-06-27",2,16,7,2,1,0,1,0],["2018-07-01",2,16,2,5,1,0,1,0],["2018-07-07",4,13,3,5,6,0,0,0],["2018-07-14",2,17,0,5,7,0,1,0],["2018-07-18",3,5,0,4,0,0,1,0],["2018-07-25",4,7,9,3,1,2,1,0],["2018-08-01",2,17,7,4,3,0,1,0],["2018-08-05",1,18,1,5,1,0,1,0],["2018-08-12",3,5,4,5,6,4,1,0],["2018-08-14",3,5,3,5,1,0,1,0],["2018-08-14",3,9,5,4,6,0,1,0],["2018-08-19",3,10,9,2,5,0,0,1],["2018-09-03",2,17,9,5,6,0,1,0],["2018-09-15",4,15,4,5,1,0,1,0],["2018-09-16",4,20,3,2,1,0,1,0],["2018-09-20",1,18,2,4,0,0,1,1],["2018-09-21",4,7,8,5,7,4,1,0],["2018-09-22",4,6,2,4,1,1,1,0],["2018-10-06",1,22,5,5,6,0,1,0],["2018-10-06",1,18,0,2,1,2,1,0],["2018-10-17",2,11,7,4,1,1,1,0],["2018-10-18",2,16,3,5,5,4,1,0],["2018-10-20",4,1,3,4,6,3,1,1],["2018-10-28",2,11,4,2,3,1,1,1],["2018-11-02",0,12,2,5,0,0,1,0],["2018-11-07",1,18,0,2,1,0,1,0],["2018-11-12",1,4,8,4,6,0,1,0],["2018-11-15",4,13,9,5,4,0,1,0],["2018-11-17",4,6,1,4,1,3,1,0],["2018-11-18",4,1,7,4,1,3,1,0],["2018-11-25",4,6,9,4,4,4,1,0],["2018-12-03",4,13,3,5,7,2,0,1],["2018-12-06",3,10,6,2,1,3,1,0],["2018-12-06",4,7,1,5,3,2,1,1],["2018-12-08",4,1,5,3,6,1,1,0],["2018-12-08",1,21,1,5,6,0,1,0],["2018-12-08",2,16,3,4,1,3,1,0],["2019-01-15",4,13,6,5,6,3,1,0],["2019-01-19",1,22,9,5,6,0,1,0],["2019-01-24",3,14,6,5,3,0,1,0],["2019-02-04",2,19,7,5,1,3,0,0],["2019-02-10",0,0,7,2,3,0,1,1],["2019-02-11",3,10,6,4,1,0,1,0],["2019-02-16",4,1,3,5,1,0,1,0],["2019-02-18",3,9,0,5,6,0,1,0],["2019-03-04",3,9,1,4,6,0,1,0],["2019-03-06",2,11,5,4,1,3,1,1],["2019-03-08",4,1,2,4,1,0,1,1],["2019-03-10",4,7,1,5,3,0,1,0],["2019-03-13",4,7,7,5,6,0,1,1],["2019-03-23",4,13,9,5,6,3,1,0],["2019-03-25",1,4,7,5,1,2,1,0],["2019-03-29",2,19,2,4,7,3,1,0],["2019-04-01",4,15,6,4,1,0,1,0],["2019-04-13",4,13,8,4,3,0,1,0],["2019-04-16",0,0,2,3,3,0,1,0],["2019-05-12",2,16,9,5,1,0,1,0],["2019-05-13",0,0,0,2,1,2,1,0],["2019-05-17",2,16,1,5,6,0,1,0],["2019-05-18",4,15,7,4,1,3,1,1],["2019-05-22",1,22,4,5,0,0,1,0],["2019-05-22",0,0,2,5,1,1,1,1],["2019-05-28",2,11,9,3,6,0,1,1],["2019-06-08",4,6,4,5,4,0,1,0],["2019-06-09",0,3,2,3,3,3,1,1],["2019-06-13",2,19,3,5,3,0,1,0],["2019-07-01",4,1,3,3,7,0,1,0],["2019-07-04",4,1,7,5,5,0,1,0],["2019-07-15",3,5,9,2,6,0,1,0],["2019-07-16",2,19,3,4,7,1,1,0],["2019-07-16",1,4,8,5,3,0,1,1],["2019-07-18",1,4,3,3,6,0,1,1],["2019-07-25",0,8,3,4,3,0,1,0],["2019-07-31",4,20,1,2,1,2,1,0],["2019-08-05",0,12,7,4,3,0,1,0],["2019-08-17",1,4,2,4,6,4,1,0],["2019-08-25",4,7,1,5,6,0,1,0],["2019-08-29",1,22,4,5,1,0,1,0],["2019-09-03",4,15,6,4,6,2,1,0],["2019-09-13",0,3,0,5,1,0,1,0],["2019-09-15",0,12,9,4,6,0,1,0],["2019-09-15",3,9,9,2,3,0,1,0],["2019-09-16",4,15,9,4,3,0,1,0],["2019-10-06",3,9,1,2,1,0,1,0],["2019-10-11",4,1,8,4,3,0,1,0],["2019-10-16",2,19,7,5,1,0,1,1],["2019-10-18",4,6,3,2,6,4,1,1],["2019-10-20",3,9,9,4,6,0,1,0],["2019-10-20",3,14,9,5,1,3,1,0],["2019-10-22",3,10,2,2,3,0,1,0],["2019-10-24",0,0,7,4,3,3,1,0],["2019-10-30",4,1,0,5,1,3,1,0],["2019-11-02",3,5,3,5,0,0,1,0],["2019-11-11",1,4,4,3,1,0,1,1],["2019-11-26",0,3,3,5,3,0,1,1],["2019-11-30",1,22,6,2,1,4,1,0],["2019-12-12",0,3,9,5,1,0,1,0],["2019-12-23",4,20,3,5,1,0,1,0],["2019-12-23",2,19,4,5,1,0,1,0],["2020-01-09",0,12,6,5,1,0,1,1],["2020-01-14",1,22,3,3,3,0,1,1],["2020-01-24",4,13,5,4,3,1,1,0],["2020-02-02",3,14,5,3,3,0,1,1],["2020-02-06",3,10,3,5,1,4,1,1],["2020-02-06",1,21,6,5,0,3,1,0],["2020-02-12",1,22,9,5,6,0,1,0],["2020-02-24",2,19,6,4,1,0,1,0],["2020-02-26",4,20,7,4,1,1,1,0],["2020-03-09",3,14,2,5,1,1,1,0],["2020-03-10",4,15,3,5,1,0,1,1],["2020-03-11",1,4,4,4,6,0,1,0],["2020-03-15",1,4,2,4,7,0,1,1],["2020-03-16",1,21,1,5,6,2,1,0],["2020-03-19",2,11,6,5,1,0,1,0],["2020-03-28",2,17,3,5,6,0,1,0],["2020-03-30",4,6,7,5,3,0,1,0],["2020-04-13",2,19,8,4,3,3,1,0],["2020-04-20",4,13,4,5,3,0,1,1],["2020-04-22",2,17,0,5,3,1,1,0],["2020-04-27",0,12,1,4,4,3,1,0],["2020-05-03",2,16,8,4,4,4,0,0],["2020-05-13",2,19,0,3,3,0,1,0],["2020-06-03",2,17,4,5,3,0,1,0],["2020-06-07",4,13,2,5,1,3,1,0],["2020-06-08",4,15,3,2,3,1,1,0],["2020-06-18",0,8,9,5,1,0,1,0],["2020-06-21",2,11,9,5,3,1,1,0],["2020-06-22",3,9,6,2,6,0,1,1],["2020-06-28",3,5,6,5,3,3,1,1],["2020-07-03",2,11,9,4,7,3,1,0],["2020-07-07",3,14,1,5,5,3,1,1],["2020-07-08",1,4,1,2,1,0,1,1],["2020-07-09",2,16,0,5,3,2,1,0],["2020-07-16",4,1,5,3,4,2,0,0],["2020-07-25",1,4,2,5,6,2,1,0],["2020-07-26",4,20,4,4,1,1,1,0],["2020-08-06",2,19,9,4,3,3,1,0],["2020-08-17",4,1,0,5,4,2,1,1],["2020-08-22",1,22,0,5,4,3,1,0],["2020-08-29",4,20,9,2,6,1,1,0],["2020-09-21",2,17,7,5,5,1,1,1],["2020-10-04",2,11,5,4,6,0,1,0],["2020-11-03",1,4,6,5,6,2,1,1],["2020-11-06",4,1,8,5,1,3,1,0],["2020-11-18",3,10,3,5,3,2,1,1],["2020-11-22",2,17,0,5,1,3,1,0],["2020-11-28",2,17,1,4,4,3,0,0],["2020-12-07",2,19,4,4,7,0,1,0]]};
+(function(){
+"use strict";
+const HAS_CHART=typeof Chart!=="undefined";
+if(!HAS_CHART){document.querySelectorAll(".chart-box").forEach(b=>b.innerHTML='<p class="empty">Chart library could not load (no internet access or blocked CDN). Filters, KPIs, request types and the map still work.</p>');}
+const D = RAW.dims;
+const PRODUCTS=D["Product"], ISSUES=D["Issue"], REQS=D["Request type"], STATES=D["State"], RESP=D["Company response"];
+const RELIEF = new Set([RESP.indexOf("Closed with monetary relief"),RESP.indexOf("Closed with non-monetary relief")]);
+const OPEN = RESP.indexOf("In progress");
+
+// rows: [date, product, subProduct, issue, request, state, response, timely, disputed]
+const rows = RAW.rows.map(r=>{
+  const y=+r[0].slice(0,4), m=+r[0].slice(5,7), q=Math.floor((m-1)/3)+1;
+  return {date:r[0], year:y, quarter:y+" Q"+q, product:r[1], issue:r[3], req:r[4], state:r[5], resp:r[6], timely:r[7], disputed:r[8]};
+});
+const years=[...new Set(rows.map(r=>r.year))].sort();
+const quarters=[]; for(const y of years){for(let q=1;q<=4;q++){quarters.push(y+" Q"+q);}}
+// trim leading/trailing empty quarters
+const qHas=new Set(rows.map(r=>r.quarter));
+while(quarters.length&&!qHas.has(quarters[0]))quarters.shift();
+while(quarters.length&&!qHas.has(quarters[quarters.length-1]))quarters.pop();
+
+const fmtDate=d=>new Date(d+"T00:00:00").toLocaleDateString("en-AU",{month:"short",year:"numeric"});
+const dates=rows.map(r=>r.date).sort();
+document.getElementById("subtitle").textContent=`Commonwealth Bank customer complaints · ${rows.length.toLocaleString("en-AU")} records · ${fmtDate(dates[0])} – ${fmtDate(dates[dates.length-1])}`;
+
+// ---------- Filter state ----------
+const F={year:null,quarter:null,product:null,issue:null,state:null,req:null};
+const LABEL={year:"Year",quarter:"Quarter",product:"Product",issue:"Issue",state:"State",req:"Request type"};
+const show=(k,v)=>k==="product"?PRODUCTS[v]:k==="issue"?ISSUES[v]:k==="state"?STATES[v]:k==="req"?REQS[v]:String(v);
+function pass(r,except){
+  for(const k in F){
+    if(F[k]===null||(except&&except.includes(k)))continue;
+    if(r[k]!==F[k])return false;
+  }
+  return true;
+}
+function setF(k,v){
+  F[k]=(F[k]===v)?null:v;
+  if(k==="year"&&F.year!==null)F.quarter=null;
+  if(k==="quarter"&&F.quarter!==null)F.year=null;
+  render();
+}
+const anyF=()=>Object.values(F).some(v=>v!==null);
+
+// ---------- Helpers ----------
+const pct=(a,b)=>b?(a/b*100).toFixed(1)+"%":"—";
+const n=v=>v.toLocaleString("en-AU");
+function countBy(list,key,size){const c=new Array(size).fill(0);list.forEach(r=>c[r[key]]++);return c;}
+function stats(list){
+  const total=list.length, timely=list.filter(r=>r.timely).length, disputed=list.filter(r=>r.disputed).length;
+  const open=list.filter(r=>r.resp===OPEN).length, closed=total-open, relief=list.filter(r=>RELIEF.has(r.resp)).length;
+  const ic=countBy(list,"issue",ISSUES.length); let top=-1,tv=0; ic.forEach((v,i)=>{if(v>tv){tv=v;top=i;}});
+  return {total,timely,disputed,open,closed,relief,top,tv};
+}
+const ALL=stats(rows);
+
+// ---------- Selects ----------
+const selects=[...document.querySelectorAll("select[data-key]")];
+const optSource={year:years.map(y=>[y,String(y)]),product:PRODUCTS.map((p,i)=>[i,p]),issue:ISSUES.map((p,i)=>[i,p])};
+selects.forEach(s=>s.addEventListener("change",()=>{
+  const k=s.dataset.key, v=s.value===""?null:+s.value;
+  if(v===null){F[k]=null;render();} else {F[k]=null;setF(k,v);}
+}));
+function renderSelects(){
+  selects.forEach(s=>{
+    const k=s.dataset.key, list=rows.filter(r=>pass(r,k==="year"?["year","quarter"]:[k]));
+    const c={}; list.forEach(r=>{c[r[k]]=(c[r[k]]||0)+1;});
+    let h=`<option value="">All (${n(list.length)})</option>`;
+    for(const [v,l] of optSource[k]) h+=`<option value="${v}"${F[k]===v?" selected":""}>${l} (${c[v]||0})</option>`;
+    s.innerHTML=h;
+  });
+}
+
+// ---------- Chips ----------
+const chipsEl=document.getElementById("chips");
+function renderChips(){
+  const act=Object.keys(F).filter(k=>F[k]!==null);
+  if(!act.length){chipsEl.innerHTML='<span class="hint">No filters applied. Use the dropdowns or click any chart, bar or state to cross-filter.</span>';return;}
+  chipsEl.innerHTML=act.map(k=>`<button type="button" class="chip" data-k="${k}" aria-label="Remove filter ${LABEL[k]}: ${show(k,F[k])}">${LABEL[k]}: <span>${show(k,F[k])}</span><svg viewBox="0 0 10 10" aria-hidden="true"><path d="M1 1l8 8M9 1l-8 8" stroke="currentColor" stroke-width="1.8"/></svg></button>`).join("");
+  chipsEl.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{F[b.dataset.k]=null;render();const nx=chipsEl.querySelector(".chip");(nx||document.getElementById("fYear")).focus();});
+}
+document.getElementById("resetAll").onclick=()=>{for(const k in F)F[k]=null;render();};
+
+// ---------- KPIs ----------
+const kpiEl=document.getElementById("kpis");
+function renderKPIs(list){
+  const s=stats(list), f=anyF();
+  const cmp=t=>f?` · all data <b>${t}</b>`:"";
+  const cards=[
+    ["Total complaints", n(s.total), f?`${pct(s.total,ALL.total)} of all ${n(ALL.total)}`:`${(s.total/years.length).toFixed(0)} per year on average`],
+    ["Timely response rate", pct(s.timely,s.total), `${n(s.total-s.timely)} late`+cmp(pct(ALL.timely,ALL.total))],
+    ["Disputed rate", pct(s.disputed,s.total), `${n(s.disputed)} disputed`+cmp(pct(ALL.disputed,ALL.total))],
+    ["Resolved with relief", pct(s.relief,s.closed), `${n(s.relief)} of ${n(s.closed)} closed`+cmp(pct(ALL.relief,ALL.closed))],
+    ["Open cases", n(s.open), `${pct(s.open,s.total)} still in progress`+cmp(n(ALL.open))],
+    ["Top issue", s.top<0?"—":ISSUES[s.top], s.top<0?"No complaints":`${n(s.tv)} complaints (${pct(s.tv,s.total)})`, true]
+  ];
+  kpiEl.innerHTML=cards.map(([l,v,sub,txt])=>`<li class="kpi"><span class="k-label">${l}</span><span class="k-value${txt?" text":""}">${v}</span><span class="k-sub">${sub}</span></li>`).join("");
+}
+
+// ---------- Request type (accessible HTML bars) ----------
+const reqEl=document.getElementById("reqList");
+function renderReq(){
+  const list=rows.filter(r=>pass(r,["req"])), c=countBy(list,"req",REQS.length);
+  const order=REQS.map((_,i)=>i).sort((a,b)=>c[b]-c[a]||REQS[a].localeCompare(REQS[b]));
+  const max=Math.max(1,...c), tot=list.length;
+  const focused=document.activeElement&&document.activeElement.dataset?document.activeElement.dataset.req:null;
+  reqEl.classList.toggle("has-sel",F.req!==null);
+  reqEl.innerHTML=order.map(i=>`<li><button type="button" class="req-btn" data-req="${i}" aria-pressed="${F.req===i}" aria-label="${REQS[i]}: ${c[i]} complaints, ${pct(c[i],tot)}"><span class="r-name">${REQS[i]}</span><span class="r-val">${n(c[i])}<small>${pct(c[i],tot)}</small></span><span class="r-track"><span class="r-bar" style="display:block;width:${c[i]/max*100}%"></span></span></button></li>`).join("");
+  reqEl.querySelectorAll(".req-btn").forEach(b=>b.onclick=()=>setF("req",+b.dataset.req));
+  if(focused!=null){const b=reqEl.querySelector(`[data-req="${focused}"]`);if(b)b.focus();}
+}
+
+// ---------- Chart.js setup ----------
+let trend=null,annual=null;
+if(HAS_CHART){
+Chart.defaults.font.family='"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
+Chart.defaults.font.size=12;
+Chart.defaults.color="#3d3d3d";
+const tooltip={backgroundColor:"#141414",titleColor:"#fff",bodyColor:"#fff",padding:9,cornerRadius:6,displayColors:false};
+const valueLabels={id:"valueLabels",afterDatasetsDraw(ch){
+  const {ctx}=ch, meta=ch.getDatasetMeta(0); ctx.save(); ctx.font="600 11px "+Chart.defaults.font.family; ctx.fillStyle="#141414"; ctx.textAlign="center";
+  meta.data.forEach((el,i)=>{const v=ch.data.datasets[0].data[i]; if(v)ctx.fillText(v,el.x,el.y-6);}); ctx.restore();}};
+
+trend=new Chart(document.getElementById("trend"),{
+  type:"line",
+  data:{labels:quarters,datasets:[{data:[],borderColor:"#141414",borderWidth:2,tension:.3,cubicInterpolationMode:"monotone",fill:true,
+    backgroundColor:"rgba(255,204,0,.32)",pointRadius:[],pointBackgroundColor:[],pointBorderColor:"#141414",pointHoverRadius:6,pointHitRadius:10}]},
+  options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
+    interaction:{mode:"index",intersect:false},
+    plugins:{legend:{display:false},tooltip:{...tooltip,callbacks:{label:c=>`${c.parsed.y} complaints`}}},
+    scales:{x:{grid:{display:false},ticks:{autoSkip:false,maxRotation:0,callback(v,i){const l=quarters[i];return l.endsWith("Q1")?l.slice(0,4):"";}}},
+            y:{beginAtZero:true,grid:{color:"#ECE9DF"},border:{display:false},ticks:{precision:0},title:{display:true,text:"Complaints"}}},
+    onClick(e,els){const p=trend.getElementsAtEventForMode(e,"index",{intersect:false},true); if(p.length)setF("quarter",quarters[p[0].index]);}
+  }});
+
+annual=new Chart(document.getElementById("annual"),{
+  type:"bar",
+  data:{labels:years.map(String),datasets:[{data:[],backgroundColor:[],borderColor:"#141414",borderWidth:1,borderRadius:3,maxBarThickness:64}]},
+  plugins:[valueLabels],
+  options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},layout:{padding:{top:18}},
+    plugins:{legend:{display:false},tooltip:{...tooltip,callbacks:{label:c=>`${c.parsed.y} complaints`}}},
+    scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:"#ECE9DF"},border:{display:false},ticks:{precision:0}}},
+    onClick(e,els){if(els.length)setF("year",years[els[0].index]);}
+  }});
+
+// keyboard navigation for canvases
+function keyNav(chart,onPick,labels){
+  const cv=chart.canvas; let idx=-1;
+  const show=()=>{const el={datasetIndex:0,index:idx};chart.setActiveElements([el]);chart.tooltip.setActiveElements([el],{x:0,y:0});chart.update("none");
+    document.getElementById("live").textContent=`${labels()[idx]}: ${chart.data.datasets[0].data[idx]} complaints`;};
+  cv.addEventListener("keydown",e=>{
+    const len=labels().length;
+    if(e.key==="ArrowRight"||e.key==="ArrowLeft"){e.preventDefault();idx=idx<0?0:(idx+(e.key==="ArrowRight"?1:-1)+len)%len;show();}
+    else if(e.key==="Home"){e.preventDefault();idx=0;show();}
+    else if(e.key==="End"){e.preventDefault();idx=len-1;show();}
+    else if((e.key==="Enter"||e.key===" ")&&idx>=0){e.preventDefault();onPick(idx);setTimeout(show,0);}
+  });
+  cv.addEventListener("blur",()=>{chart.setActiveElements([]);chart.tooltip.setActiveElements([],{x:0,y:0});chart.update("none");});
+}
+keyNav(trend,i=>setF("quarter",quarters[i]),()=>quarters);
+keyNav(annual,i=>setF("year",years[i]),()=>years.map(String));
+}
+
+function renderTrend(){
+  if(!trend)return;
+  const list=rows.filter(r=>pass(r,["year","quarter"])), c={}; list.forEach(r=>{c[r.quarter]=(c[r.quarter]||0)+1;});
+  const ds=trend.data.datasets[0];
+  quarters.forEach((q,i)=>{ds.data[i]=c[q]||0;});
+  ds.pointRadius=quarters.map(q=>(F.quarter===q)?7:(F.year!==null&&q.startsWith(F.year+" "))?4:0);
+  ds.pointBackgroundColor=quarters.map(q=>F.quarter===q?"#FFCC00":"#141414");
+  trend.update();
+  const peak=quarters.reduce((a,q)=>(c[q]||0)>(c[a]||0)?q:a,quarters[0]);
+  trend.canvas.setAttribute("aria-label",`Line chart of complaints per quarter, ${quarters[0]} to ${quarters[quarters.length-1]}. Peak ${peak} with ${c[peak]||0}.${F.quarter?" Selected quarter "+F.quarter+".":""} Use left and right arrow keys to explore, Enter to filter.`);
+}
+function renderAnnual(){
+  if(!annual)return;
+  const list=rows.filter(r=>pass(r,["year","quarter"])), c={}; list.forEach(r=>{c[r.year]=(c[r.year]||0)+1;});
+  const sel=F.year!==null?F.year:(F.quarter?+F.quarter.slice(0,4):null);
+  const ds=annual.data.datasets[0];
+  years.forEach((y,i)=>{ds.data[i]=c[y]||0;});
+  ds.backgroundColor=years.map(y=>sel===null||sel===y?"#FFCC00":"#E3DFD2");
+  ds.borderColor=years.map(y=>sel===null||sel===y?"#141414":"#9c988b");
+  annual.update();
+  annual.canvas.setAttribute("aria-label","Bar chart of complaints per year: "+years.map(y=>`${y} ${c[y]||0}`).join(", ")+". Use left and right arrow keys to explore, Enter to filter.");
+}
+
+// ---------- Map ----------
+const SHAPES={
+ WA:[[129,-14.9],[127.8,-14.1],[126.2,-13.9],[124.6,-15.4],[123.4,-16.6],[122.2,-17.6],[121.2,-19.4],[119.2,-20],[117,-20.6],[114.7,-21.7],[113.6,-22.6],[113.4,-24.4],[113.9,-26.4],[114.6,-28.7],[115,-30.4],[115.7,-31.8],[115.6,-33.3],[115,-33.6],[115.2,-34.4],[116.5,-35],[118,-35],[119.8,-34],[122,-33.9],[124,-33],[126,-32.3],[129,-31.7]],
+ NT:[[129,-14.9],[129.6,-14.5],[130.2,-13],[131,-12.2],[132.6,-11.5],[135,-12.1],[136.8,-12.2],[135.9,-13.8],[135.5,-15],[137,-15.9],[138,-16.5],[138,-26],[129,-26]],
+ SA:[[129,-26],[141,-26],[141,-38.05],[140,-37.6],[139.7,-36.9],[139.3,-35.8],[138.2,-35.65],[138.5,-34.8],[138.1,-33.4],[137.6,-33.9],[137.2,-35.1],[136.8,-35.2],[136.4,-34.4],[135.9,-34.9],[135.3,-34.6],[134.2,-32.8],[132.8,-32],[131.2,-31.5],[129,-31.7]],
+ QLD:[[138,-16.5],[139.5,-17.4],[140.8,-17.4],[141.4,-16.6],[141.6,-15],[141.6,-12.6],[142.5,-10.7],[143.5,-12.5],[144,-14.3],[145.3,-14.9],[145.4,-16],[146,-17.5],[146.3,-19],[148.7,-20.3],[149.5,-21.6],[150.8,-22.6],[151.3,-24],[152.6,-25.2],[153.1,-25.8],[153.1,-27],[153.55,-28.2],[152,-28.4],[150.3,-28.6],[148.9,-29],[141,-29],[141,-26],[138,-26]],
+ NSW:[[141,-29],[148.9,-29],[150.3,-28.6],[152,-28.4],[153.55,-28.2],[153.6,-28.7],[153.1,-30.3],[152.8,-31.6],[152.2,-32.7],[151.3,-33.7],[150.8,-34.6],[150.4,-35.6],[150,-36.6],[149.95,-37.5],[148.2,-36.8],[147,-36.1],[145,-35.9],[144,-35.6],[143.3,-34.8],[142.3,-34.2],[141,-34]],
+ VIC:[[141,-34],[142.3,-34.2],[143.3,-34.8],[144,-35.6],[145,-35.9],[147,-36.1],[148.2,-36.8],[149.95,-37.5],[148,-37.8],[146.4,-39.1],[145.5,-38.6],[144.9,-38.3],[143.5,-38.8],[142.4,-38.4],[141,-38.05]],
+ TAS:[[144.6,-40.7],[146,-41.1],[148.3,-40.9],[148.3,-42.2],[147.9,-43.2],[146.9,-43.6],[146,-43.5],[145.2,-42.2],[144.7,-41.3]],
+ ACT:[[148.8,-35.15],[149.25,-35.15],[149.25,-35.5],[149,-35.9],[148.8,-35.6]]
+};
+const LABELPOS={WA:[121.5,-25.5],NT:[133.5,-20],SA:[135,-29.5],QLD:[144.5,-22.5],NSW:[146.5,-32],VIC:[144.2,-37.1],TAS:[146.5,-45.4],ACT:[153.2,-36.3]};
+const NAMES={NSW:"New South Wales",VIC:"Victoria",QLD:"Queensland",WA:"Western Australia",SA:"South Australia",TAS:"Tasmania",ACT:"Australian Capital Territory",NT:"Northern Territory"};
+const K=10.6,COS=Math.cos(27*Math.PI/180);
+const P=([lo,la])=>[((lo-112.6)*COS*K).toFixed(1),((-la-10.2)*K).toFixed(1)];
+const svg=document.getElementById("map"), NS="http://www.w3.org/2000/svg";
+const mapNodes={};
+const order=["WA","NT","SA","QLD","NSW","VIC","TAS","ACT"];
+for(const code of order){
+  const idx=STATES.indexOf(code); if(idx<0)continue;
+  const g=document.createElementNS(NS,"g"); g.setAttribute("tabindex","0"); g.setAttribute("role","button");
+  const path=document.createElementNS(NS,"path"); path.setAttribute("class","st");
+  path.setAttribute("d","M"+SHAPES[code].map(P).map(p=>p.join(",")).join("L")+"Z");
+  g.appendChild(path);
+  if(code==="ACT"){
+    const c=P([149.05,-35.4]); const dot=document.createElementNS(NS,"circle");
+    dot.setAttribute("cx",c[0]);dot.setAttribute("cy",c[1]);dot.setAttribute("r","6");dot.setAttribute("class","st");g.appendChild(dot);
+    const l=P(LABELPOS.ACT); const ln=document.createElementNS(NS,"path"); ln.setAttribute("class","lead");
+    ln.setAttribute("d",`M${+c[0]+6},${c[1]}L${+l[0]-18},${+l[1]-4}`); svg.appendChild(ln);
+  }
+  svg.appendChild(g);
+  const lp=P(LABELPOS[code]); const t=document.createElementNS(NS,"text");
+  t.setAttribute("x",lp[0]); t.setAttribute("y",lp[1]);
+  t.innerHTML=`<tspan>${code}</tspan><tspan class="n" x="${lp[0]}" dy="14"></tspan>`;
+  mapNodes[code]={g,path,dot:g.querySelector("circle"),t,idx};
+  const pick=()=>setF("state",idx);
+  g.addEventListener("click",pick);
+  g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();pick();}});
+  g.addEventListener("mousemove",e=>tipShow(e,code));
+  g.addEventListener("mouseleave",()=>tip.style.opacity=0);
+}
+order.forEach(c=>{if(mapNodes[c])svg.appendChild(mapNodes[c].t);}); // labels on top
+const tip=document.getElementById("mapTip"); let mapCounts={},mapTotal=0;
+function tipShow(e,code){
+  const box=svg.parentElement.getBoundingClientRect();
+  tip.textContent=`${NAMES[code]}: ${mapCounts[code]||0} complaints (${pct(mapCounts[code]||0,mapTotal)})`;
+  tip.style.left=Math.min(e.clientX-box.left+12,box.width-tip.offsetWidth-4)+"px"; tip.style.top=(e.clientY-box.top+12)+"px"; tip.style.opacity=1;
+}
+const RAMP=["#FFF5CC","#FFE166","#FFCC00","#E0A800","#B07D00","#7A5500"];
+function hex(h){return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16));}
+function rampAt(t){t=Math.max(0,Math.min(1,t))*(RAMP.length-1);const i=Math.min(Math.floor(t),RAMP.length-2),f=t-i,a=hex(RAMP[i]),b=hex(RAMP[i+1]);return "rgb("+a.map((v,k)=>Math.round(v+(b[k]-v)*f)).join(",")+")";}
+document.getElementById("lgRamp").style.background=`linear-gradient(90deg,${RAMP.join(",")})`;
+function renderMap(){
+  const list=rows.filter(r=>pass(r,["state"])), c=countBy(list,"state",STATES.length);
+  mapTotal=list.length; mapCounts={}; STATES.forEach((s,i)=>mapCounts[s]=c[i]);
+  const max=Math.max(...c);
+  document.getElementById("lgMax").textContent=n(max)+" complaints";
+  for(const code in mapNodes){
+    const m=mapNodes[code], v=c[m.idx], fill=v===0?"#EEEBE3":rampAt(Math.sqrt(v/(max||1)));
+    m.path.style.fill=fill; if(m.dot)m.dot.style.fill=fill;
+    const sel=F.state===m.idx;
+    m.path.classList.toggle("sel",sel); if(m.dot)m.dot.classList.toggle("sel",sel);
+    m.path.style.opacity=(F.state!==null&&!sel)?.55:1;
+    m.t.lastChild.textContent=n(v);
+    m.g.setAttribute("aria-pressed",String(sel));
+    m.g.setAttribute("aria-label",`${NAMES[code]}: ${v} complaints, ${pct(v,list.length)}`);
+  }
+}
+
+// ---------- Render ----------
+const live=document.getElementById("live");
+function render(){
+  const list=rows.filter(r=>pass(r));
+  renderSelects(); renderChips(); renderKPIs(list); renderReq(); renderTrend(); renderAnnual(); renderMap();
+  document.getElementById("resetAll").disabled=!anyF();
+  live.textContent=`Showing ${list.length} of ${rows.length} complaints.`;
+}
+render();
+})();
+</script>
+</body>
+</html>
