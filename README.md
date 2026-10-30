@@ -27,7 +27,4 @@ Total Complaints · Timely Response Rate · Disputed Rate · Resolved with Relie
 - 26.1% of closed complaints (113 of 433) were resolved with relief.
 
 ## Tools
-HTML · CSS · JavaScript · Chart.js · SVG · Python (pandas) · Excel · Claude (AI-assisted build)
-
-## Limitations
-Static prototype: no access control and no live data connection. A production version would sit in Power BI or Tableau on a governed data model.
+HTML · CSS · JavaScript · Chart.js · SVG · Python (pandas) · Excel · Claude 
