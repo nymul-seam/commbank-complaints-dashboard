@@ -1,6 +1,6 @@
 # Bank Complaints Dashboard
 
-An interactive, single-file HTML dashboard analysing 467 de-identified bank complaint records (Aug 2011 – Dec 2020).
+An interactive, HTML dashboard analysing 467 de-identified bank complaint records (Aug 2011 – Dec 2020).
 
 **Live demo:** https://nymul-seam.github.io/commbank-complaints-dashboard/
 
